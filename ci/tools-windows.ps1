@@ -12,7 +12,8 @@
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Python 3.12 to match the GitHub Actions build (.github/workflows/build-exe.yml).
+# Python 3.12: the same minor version as the Linux builds and the CI test job
+# (.gitlab-ci.yml); change them together.
 $PythonVersion      = '3.12.10'
 $PythonNupkgSha256  = '0eb85c2dfccccf1b17352de4c397f69194035b7d37149eacc16f1147d93de3b8'
 $TclTkMsiSha256     = '55c96ffad69b1c834aa52e11b9ce41637a178ba6ad6607e83956044834276e2a'

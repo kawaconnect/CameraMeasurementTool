@@ -15,8 +15,7 @@
 # toolchain (Python + Tk, Inno Setup) the first time under the runner's
 # tools directory, so nothing has to be pre-installed.
 #
-# The GitHub Actions workflow (.github/workflows/build-exe.yml) is separate
-# and unchanged; it still builds the exe on github.com.
+# GitLab CI is the only CI: there is no GitHub Actions workflow any more.
 
 stages: [test, build, release]
 
@@ -25,7 +24,7 @@ workflow:
     - if: $CI_COMMIT_TAG =~ /^v/
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == "api"
-    # Merge requests (Renovate): tests + Linux builds; Windows manual; no release.
+    # Merge requests (Renovate): lint, tests + Linux builds; Windows manual; no release.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 variables:
@@ -61,14 +60,37 @@ variables:
 
 # ───────────────────────────── tests (gate) ─────────────────────────────
 
-test:
+# Lint: the bug-catching rule set from pyproject.toml ([tool.ruff.lint]),
+# not style. Pinned so a new ruff release cannot fail an unrelated MR.
+lint:
   extends: .linux
   stage: test
-  image: python:3.15
+  image: python:3.12
   variables:
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
   cache:
-    key: pip-py312
+    key: pip-py312-lint
+    paths: [.cache/pip/]
+  script:
+    - pip install -q ruff==0.16.8
+    - ruff --version
+    - ruff check --output-format concise .
+
+# The whole suite, GUI tests included, under Xvfb on the same Python minor
+# version the Windows exe and the AppImage are built with (3.12). The GUI
+# tests measure pixel layouts, so the screen size, colour depth and font are
+# fixed here (DejaVu is the only font installed). CAMERA_TOOL_GUI_TESTS=1
+# makes a missing display fail the job instead of skipping those tests.
+test:
+  extends: .linux
+  stage: test
+  image: python:3.12
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+    PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
+    CAMERA_TOOL_GUI_TESTS: "1"
+  cache:
+    key: pip-py312-test
     paths: [.cache/pip/]
   script:
     - *version
@@ -90,8 +112,10 @@ test:
            [ "$APP_VERSION" = "$VERSION" ] || { echo "cwt.__version__ is $APP_VERSION but this release is $VERSION: bump cwt/__init__.py and pyproject.toml first"; exit 1; }
            [ "$PROJ_VERSION" = "$VERSION" ] || { echo "pyproject.toml version is $PROJ_VERSION but this release is $VERSION: bump it (and cwt/__init__.py) first"; exit 1; } ;;
       esac
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends xvfb xauth fonts-dejavu-core >/dev/null
+    - python -c "import tkinter; print('Tk', tkinter.TkVersion)"
     - pip install -q -r requirements.txt pytest
-    - python -m pytest -q
+    - xvfb-run -a -s "-screen 0 1920x1080x24" python -m pytest -q -rs
 
 # ───────────────────────────── Linux ─────────────────────────────
 
@@ -260,6 +284,9 @@ release:
       TAG_SHA=$(printf '%s' "$TAG_JSON" | jq -r '.commit.id')
       [ "$TAG_SHA" = "$CI_COMMIT_SHA" ] || { echo "Tag $TAG points at $TAG_SHA but this pipeline built $CI_COMMIT_SHA. Run the pipeline on the tag ref $TAG."; exit 1; }
       ls -la out/
+      # Checksums for every file, published next to them.
+      ( cd out && rm -f SHA256SUMS && sha256sum * > ../SHA256SUMS ) && mv SHA256SUMS out/SHA256SUMS
+      cat out/SHA256SUMS
       : > links.ndjson
       for f in out/*; do
         [ -f "$f" ] || continue
@@ -271,15 +298,28 @@ release:
       done
       test -s links.ndjson || { echo "No builds to publish"; exit 1; }
       ASSETS=$(jq -s -c . links.ndjson)
-      NOTES=$(printf 'Camera Wire Tool %s\n\n- Windows: installer (setup.exe), portable zip, and the bare CameraWireTool.exe\n- Linux: AppImage (x86_64, glibc 2.35+) and Flatpak bundle\n\nBuilt on GitLab CI.' "$VERSION")
-      BODY=$(jq -cn --arg tag "$TAG" --arg name "Camera Wire Tool $VERSION" --arg desc "$NOTES" --argjson links "$ASSETS" '{tag_name:$tag, name:$name, description:$desc, assets:{links:$links}}')
+      NOTES=$(printf 'Camera Wire Tool %s\n\n- Windows: installer (setup.exe), portable zip, and the bare CameraWireTool.exe\n- Linux: AppImage (x86_64, glibc 2.35+) and Flatpak bundle\n- SHA256SUMS: checksums of every file (`sha256sum -c SHA256SUMS`)\n\nBuilt on GitLab CI.' "$VERSION")
       if curl -fsS -o /dev/null -H "$H" "$API/releases/$TAG" 2>/dev/null; then
-        curl -fsS -H "$H" "$API/releases/$TAG/assets/links" | jq -r '.[].id' | while read -r id; do
+        # Existing release: update its text, then update or add one link at
+        # a time, so a failure part-way never leaves it without downloads.
+        # Links whose file is no longer built are removed last.
+        BODY=$(jq -cn --arg name "Camera Wire Tool $VERSION" --arg desc "$NOTES" '{name:$name, description:$desc}')
+        curl -fsS -X PUT -H "$H" -H "Content-Type: application/json" "$API/releases/$TAG" -d "$BODY" | jq -r '"updated release " + .tag_name'
+        OLD=$(curl -fsS -H "$H" "$API/releases/$TAG/assets/links?per_page=100")
+        while read -r l; do
+          name=$(printf '%s' "$l" | jq -r '.name')
+          id=$(printf '%s' "$OLD" | jq -r --arg n "$name" '[.[] | select(.name == $n) | .id][0] // empty')
+          if [ -n "$id" ]; then
+            curl -fsS -X PUT -H "$H" -H "Content-Type: application/json" "$API/releases/$TAG/assets/links/$id" -d "$l" >/dev/null
+          else
+            curl -fsS -X POST -H "$H" -H "Content-Type: application/json" "$API/releases/$TAG/assets/links" -d "$l" >/dev/null
+          fi
+        done < links.ndjson
+        printf '%s' "$OLD" | jq -r --argjson keep "$ASSETS" '($keep | map(.name)) as $k | .[] | select(.name as $n | $k | index($n) | not) | .id' | while read -r id; do
           curl -fsS -X DELETE -H "$H" "$API/releases/$TAG/assets/links/$id" >/dev/null
         done
-        curl -fsS -X PUT -H "$H" -H "Content-Type: application/json" "$API/releases/$TAG" -d "$BODY" | jq -r '"updated release " + .tag_name'
-        while read -r l; do curl -fsS -X POST -H "$H" -H "Content-Type: application/json" "$API/releases/$TAG/assets/links" -d "$l" >/dev/null; done < links.ndjson
       else
+        BODY=$(jq -cn --arg tag "$TAG" --arg name "Camera Wire Tool $VERSION" --arg desc "$NOTES" --argjson links "$ASSETS" '{tag_name:$tag, name:$name, description:$desc, assets:{links:$links}}')
         curl -fsS -X POST -H "$H" -H "Content-Type: application/json" "$API/releases" -d "$BODY" | jq -r '"created release " + .tag_name'
       fi
       echo "Published $TAG with:"; jq -r '.name' links.ndjson | sed 's/^/  /'

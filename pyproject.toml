@@ -48,26 +48,28 @@ packages = ["cwt"]
 [tool.ruff]
 line-length = 110
 target-version = "py310"
+# old/ is the earlier PNG-only tool, kept for reference and not maintained.
+extend-exclude = ["old"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "PL"]
+# Rules that catch real bugs, not style: syntax errors (E9), pyflakes (F:
+# undefined names, unused imports/variables, broken f-strings), bugbear (B)
+# and pylint errors (PLE). CI runs `ruff check .` with exactly this set. The
+# main module is not reformatted, so no pycodestyle/isort/pyupgrade rules.
+select = ["E9", "F", "B", "PLE"]
 ignore = [
-    "PLR0913",  # too many arguments, Tk callbacks naturally have many
-    "PLR2004",  # magic numbers, we'll move them to Constants gradually
-    "E501",     # line too long, let formatter handle this
+    "B905",  # zip() without strict=: lengths are checked where it matters
 ]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["PLR2004", "S101"]
 
 [tool.mypy]
 python_version = "3.10"
 warn_unused_ignores = true
 warn_redundant_casts = true
 strict_optional = true
-# UI code is hard to type fully; only require strictness in non-UI modules
+# Not part of CI yet (`mypy cwt/` still reports errors). UI code is hard to
+# type fully; only the pure-math modules require typed definitions.
 [[tool.mypy.overrides]]
-module = ["cwt.coords", "cwt.drawio_io", "cwt.bom", "cwt.fov"]
+module = ["cwt.bom", "cwt.fov"]
 disallow_untyped_defs = true
 
 [tool.pytest.ini_options]

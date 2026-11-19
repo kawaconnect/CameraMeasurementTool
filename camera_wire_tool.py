@@ -729,11 +729,11 @@ class ElidingLabel(ttk.Label):
                 lo, hi = 0, len(words)      # longest word prefix that fits
                 while lo < hi:
                     mid = (lo + hi + 1) // 2
-                    if fits(" ".join(words[:mid]).rstrip(" ,.;:--") + "…"):
+                    if fits(" ".join(words[:mid]).rstrip(" ,.;:-") + "…"):
                         lo = mid
                     else:
                         hi = mid - 1
-                shown = " ".join(words[:lo]).rstrip(" ,.;:--") + "…"
+                shown = " ".join(words[:lo]).rstrip(" ,.;:-") + "…"
             if str(super().cget("text")) != shown:
                 super().configure(text=shown)
             self._tip.text = text if shown != text else ""

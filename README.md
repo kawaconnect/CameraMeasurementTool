@@ -198,8 +198,10 @@ different commit from the one the pipeline built. A web/API run without `RELEASE
 only builds; download the files from the job artifacts (kept 30 days). The
 pipeline does not run on ordinary pushes.
 
-The existing GitHub Actions workflow (`.github/workflows/build-exe.yml`) is
-unchanged and still builds `CameraWireTool.exe` on github.com.
+Builds and releases run only on GitLab CI (`.gitlab-ci.yml`); there is no
+GitHub Actions workflow. Every release also carries a `SHA256SUMS` file:
+download it next to the other files and run `sha256sum -c --ignore-missing
+SHA256SUMS` to check them.
 
 **Building locally**
 
@@ -249,11 +251,22 @@ pip install -r requirements-dev.txt   # adds pytest, ruff, mypy
 pytest
 ```
 
-Tests that open windows need a display and skip without one (as in the
-Linux CI job). To run them headless: `xvfb-run -a pytest`. A few use a
-sample project in `data/`, which is not in the repo, and skip without it.
-`ruff check .` and `mypy cwt/` are configured in `pyproject.toml` but are
-not part of CI and do not pass cleanly yet.
+Tests that open windows need a display and skip without one. To run them
+headless the way the Linux CI job does (Python 3.12, DejaVu fonts, a
+1920x1080 Xvfb screen):
+
+```
+CAMERA_TOOL_GUI_TESTS=1 xvfb-run -a -s "-screen 0 1920x1080x24" pytest
+```
+
+`CAMERA_TOOL_GUI_TESTS=1` turns a missing display into a test error rather
+than a skip. A few tests use a sample project in `data/`, which is not in
+the repo, and skip without it.
+
+`ruff check .` runs in CI (the `lint` job) with the bug-catching rule set in
+`pyproject.toml` (pyflakes, syntax errors, bugbear, pylint errors; no style
+rules). `mypy cwt/` is configured there too but is not part of CI and does
+not pass cleanly yet.
 
 ## License
 
