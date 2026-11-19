@@ -2,6 +2,13 @@
 
 This document contains EVERYTHING needed to understand, maintain, modify, or rebuild this project from scratch. It is written so that a developer can pick up exactly where we left off.
 
+> **Status:** written for the first, single-floor version. The file formats,
+> coordinate system and rendering notes still hold, but the file inventory,
+> setup, controls and "Known Issues" sections predate undo/redo, wire
+> reassignment, multi-floor projects, the `.zsmt` bundle and the exports.
+> `README.md` and `CHANGELOG.md` are current; the sample files under `data/`
+> named here belong to a real job and are not in the repository.
+
 ---
 
 ## Table of Contents
@@ -28,7 +35,7 @@ This document contains EVERYTHING needed to understand, maintain, modify, or reb
 
 ## Project Purpose
 
-Estimate the total cable/wire required for a security camera network installation in the a commercial building (Sheet A111B, First Floor Dimension Plan).
+Estimate the total cable/wire required for a security camera network installation in a commercial building (first-floor dimension plan of an addition).
 
 The workflow:
 1. An architect provided a PDF floor plan

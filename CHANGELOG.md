@@ -24,9 +24,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   every visible device and note).
 - Project file: new `device_tags`, `pdf_note` and per-floor `print_area`
   fields (older files load unchanged).
+- `--version` and `--help` on the command line.
 
 ### Fixed
 
+- **CSV exports no longer hand a spreadsheet formulas.** A device id,
+  label, cable or model name that starts with `=`, `+`, `-` or `@` (for
+  example from a drawing someone sent you) is written with a leading
+  apostrophe, so Excel and LibreOffice show it as text instead of running
+  it. Numbers and the `-` / `--` placeholders are unchanged.
+- **PDF export no longer fails on a project or floor name containing `<`.**
+  Names are escaped instead of being read as markup.
+- **A file named on the command line that does not exist is reported.**
+  The start screen used to open (or another project next to the program)
+  without a word.
+- `pip install .` and `pip install ".[cad]"` work: `pyproject.toml` now
+  names the module and package to install.
+- Tests: the GUI fixture no longer breaks later tests when a progress bar
+  is still animating at teardown, and tests that need the sample project
+  skip when `data/` is absent.
+- README rewritten around requirements, install, usage, per-user files,
+  troubleshooting and security notes.
 - **Touchpads can now scroll around the plan.** Two-finger scroll pans
   (vertical, and horizontal via Shift / sideways swipe); pinch or
   Ctrl+scroll zooms. Precision-touchpad deltas are detected automatically,
