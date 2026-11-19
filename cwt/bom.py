@@ -393,6 +393,29 @@ def model_inventory(devices: list[dict], model_for_device) -> list[ModelInventor
 
 
 # ---------------- CSV export
+_CSV_FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe(value):
+    """Return `value` so a spreadsheet shows it as text, not a formula.
+
+    Device ids, labels and cable names can come from a drawing or project
+    file someone else made. Excel and LibreOffice run a cell that starts
+    with = + - or @ as a formula, so such text gets a leading apostrophe
+    (the spreadsheet hides it and shows the rest as plain text). Numbers,
+    plain numeric strings and dash placeholders ("-", "--") are left as
+    they are."""
+    if not isinstance(value, str) or not value.startswith(_CSV_FORMULA_LEAD):
+        return value
+    if not value.strip("-"):
+        return value
+    try:
+        float(value)
+        return value
+    except ValueError:
+        return "'" + value
+
+
 def write_csv(report: BomReport, path: str, currency: str = "$",
               model_lines: list[ModelInventoryLine] | None = None) -> None:
     """Write the BOM report to a CSV. Stable column order suitable for Excel.
@@ -411,7 +434,7 @@ def write_csv(report: BomReport, path: str, currency: str = "$",
             ])
             for line in report.lines:
                 w.writerow([
-                    line.cable_id, line.label, line.runs,
+                    csv_safe(line.cable_id), csv_safe(line.label), line.runs,
                     f"{line.total_ft:.2f}", f"{line.total_in:.2f}",
                     f"{line.cost_per_ft:.4f}", f"{line.subtotal:.2f}",
                 ])
@@ -428,7 +451,7 @@ def write_csv(report: BomReport, path: str, currency: str = "$",
                             f"Unit ({currency})", f"Subtotal ({currency})"])
                 hw_total = 0.0; hw_qty = 0
                 for m in model_lines:
-                    w.writerow([m.name, m.model_number, m.count,
+                    w.writerow([csv_safe(m.name), csv_safe(m.model_number), m.count,
                                 f"{m.unit_price:.2f}", f"{m.subtotal:.2f}"])
                     hw_total += m.subtotal; hw_qty += m.count
                 w.writerow(["HARDWARE TOTAL", "", hw_qty, "", f"{hw_total:.2f}"])
