@@ -186,8 +186,10 @@ def test_least_useful_columns_hide_before_numbers_are_cut(app_150):
     pump(root, 6)                   # (selecting the tab rebuilds the rows)
     tree = app._bom_models_tree
     for n in range(3):
-        tree.insert("", "end", values=(f"Hanwha {n}", "PNM-C16083RVQ-LONG",
-                                       46, "$11,283.00", "$123,849.00"),
+        # Values wide enough to overflow with any UI font (the default
+        # sans differs between machines and CI images).
+        tree.insert("", "end", values=(f"Hanwha {n}", "PNM-C16083RVQ-LONG-MODEL-NUMBER",
+                                       4646, "$11,283,000.00", "$123,849,000.00"),
                     tags=("model",))
     tree._refit()
     pump(root, 4)

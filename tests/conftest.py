@@ -1,8 +1,9 @@
 """Shared fixtures for tests that drive the real Tk UI.
 
 They need a display (Windows/macOS always have one; on Linux run under
-Xvfb). Without one, `tk_root` skips the test, so the headless CI test
-job still passes. Every GUI test redirects the settings, recent-files and
+Xvfb, as the Linux CI test job does). Without one, `tk_root` skips the
+test, unless CAMERA_TOOL_GUI_TESTS=1 asks for the GUI tests: then a
+missing display is an error, so CI cannot pass by skipping them. Every GUI test redirects the settings, recent-files and
 log paths into tmp_path so it never touches the real home folder."""
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ _SCALING_96_DPI = 96 / 72
 # runner whose desktop size, display scale and Tk version nobody picks.
 # The GUI tests measure pixel layouts and were written against Xvfb, so
 # there they skip unless asked for (CAMERA_TOOL_GUI_TESTS=1). The Linux
-# CI test job has no display and skips them anyway.
+# CI test job runs them under Xvfb.
 _SKIP_GUI_ON_WINDOWS_CI = (
     sys.platform == "win32"
     and bool(os.environ.get("GITLAB_CI") or os.environ.get("CI"))
@@ -87,6 +88,8 @@ def tk_root(isolated_home):
     try:
         root = tk.Tk()
     except tk.TclError as e:
+        if os.environ.get("CAMERA_TOOL_GUI_TESTS") == "1":
+            pytest.fail(f"CAMERA_TOOL_GUI_TESTS=1 but Tk has no display: {e}")
         pytest.skip(f"no display for Tk: {e}")
     # X11 Tk keeps `tk scaling` per display, so a test that set 150 %
     # would leave every later test at 150 %: start each test at 100 %.
