@@ -95,8 +95,12 @@ def tk_root(isolated_home):
     _unzoom_before_resizing(root)
     yield root
     with contextlib.suppress(tk.TclError):
+        # Cancel in Tcl, not with root.after_cancel(): that also tries to
+        # delete the script as a Python callback and raises TypeError for a
+        # timer Tk itself scheduled (a running ttk progress bar), which
+        # left the window up and broke every later GUI test.
         for aid in root.tk.splitlist(root.tk.call("after", "info")):
-            root.after_cancel(aid)
+            root.tk.call("after", "cancel", aid)
     try:
         root.destroy()
     except tk.TclError:

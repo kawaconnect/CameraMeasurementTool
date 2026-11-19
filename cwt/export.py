@@ -5,8 +5,9 @@ from __future__ import annotations
 import csv
 import os
 from datetime import datetime
+from xml.sax.saxutils import escape as _xml_escape
 
-from cwt.bom import BomReport, write_csv as write_bom_csv
+from cwt.bom import BomReport, csv_safe, write_csv as write_bom_csv
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -31,7 +32,9 @@ def _atomic_csv_write(path: str, rows: list[list]) -> None:
         # UTF-8 (em-dashes / currency symbols would otherwise mojibake).
         with open(tmp, "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f)
-            w.writerows(rows)
+            # Ids and labels may come from someone else's drawing: keep a
+            # spreadsheet from running them as formulas (see bom.csv_safe).
+            w.writerows([csv_safe(c) for c in row] for row in rows)
         os.replace(tmp, path)
     except Exception:
         try:
@@ -40,6 +43,13 @@ def _atomic_csv_write(path: str, rows: list[list]) -> None:
         except OSError:
             pass
         raise
+
+
+def _para_text(text) -> str:
+    """Escape user text (project, floor and currency names) for a reportlab
+    Paragraph, which reads its text as markup: a name such as "Bldg <B"
+    would otherwise stop the export with a parse error."""
+    return _xml_escape(str(text))
 
 
 def write_devices_csv(devices: list[dict], symbol_types: dict[str, dict],
@@ -199,12 +209,12 @@ def write_pdf_report(
     story = []
 
     # Cover
-    story.append(Paragraph(project_name or "Camera Wire Project", h1))
+    story.append(Paragraph(_para_text(project_name or "Camera Wire Project"), h1))
     story.append(Spacer(1, 8))
     story.append(Paragraph(
         f"Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}", body))
     if floor_label:
-        story.append(Paragraph(f"Floor: {floor_label}", body))
+        story.append(Paragraph(f"Floor: {_para_text(floor_label)}", body))
     if scale_factor:
         story.append(Paragraph(f"Calibration: 1 px = {scale_factor:.4f} inches", body))
     story.append(Spacer(1, 12))
@@ -491,10 +501,10 @@ def write_map_pdf(
         show_cable = show_cable and has_wire
 
         content = []
-        content.append(Paragraph(f"{project_name}, Summary", h2))
+        content.append(Paragraph(f"{_para_text(project_name)}, Summary", h2))
         content.append(Paragraph(
             f"Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            + (f"  ·  Floor {floor_label}" if floor_label else "")
+            + (f"  ·  Floor {_para_text(floor_label)}" if floor_label else "")
             + (f"  ·  1 px = {scale_factor:.4f}\"" if scale_factor else ""),
             small))
         content.append(Spacer(1, 8))
@@ -632,7 +642,7 @@ def write_map_pdf(
             else:
                 tlabel = "WIRING TOTAL"
             content.append(Paragraph(
-                f"<b>{tlabel}: {currency}{full_total:,.2f}</b>", h2))
+                f"<b>{tlabel}: {_para_text(currency)}{full_total:,.2f}</b>", h2))
 
         # KeepInFrame(mode='shrink') guarantees the whole summary fits on one
         # page, it scales the content down rather than spilling over.
