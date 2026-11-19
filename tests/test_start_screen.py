@@ -27,6 +27,26 @@ def test_path_from_argv_ignores_options_and_missing(tmp_path):
     assert cwt._path_from_argv(["cwt", "-x", str(f)]) == str(f)
 
 
+def test_missing_path_from_argv(tmp_path):
+    f = tmp_path / "p.drawio"
+    f.write_text("x")
+    nope = str(tmp_path / "nope.drawio")
+    assert cwt._missing_path_from_argv(["cwt"]) is None
+    assert cwt._missing_path_from_argv(["cwt", "--verbose"]) is None
+    assert cwt._missing_path_from_argv(["cwt", nope]) == nope
+    # A file that exists wins, wherever it is on the line.
+    assert cwt._missing_path_from_argv(["cwt", nope, str(f)]) is None
+
+
+def test_cli_info():
+    import cwt as cwt_pkg
+    assert cwt._cli_info(["cwt"]) is None
+    assert cwt._cli_info(["cwt", "plan.drawio"]) is None
+    assert cwt._cli_info(["cwt", "--version"]) == f"Camera Wire Tool {cwt_pkg.__version__}"
+    assert cwt._cli_info(["cwt", "-h"]).startswith("Usage:")
+    assert "--version" in cwt._cli_info(["cwt", "--help"])
+
+
 def test_bundle_for_work_drawing(tmp_path):
     work = tmp_path / "Site_work"
     work.mkdir()

@@ -20859,6 +20859,47 @@ def _path_from_argv(argv: list[str]) -> str | None:
     return None
 
 
+def _missing_path_from_argv(argv: list[str]) -> str | None:
+    """The first file named on the command line that does not exist, when
+    no named file does; None otherwise. Lets the start screen say so
+    instead of opening as if nothing had been asked for."""
+    missing = None
+    for a in argv[1:]:
+        if a.startswith("-"):
+            continue
+        if os.path.isfile(a):
+            return None
+        if missing is None:
+            missing = a
+    return missing
+
+
+_USAGE = """\
+Usage: camera_wire_tool.py [FILE]
+
+Opens FILE: a project (.zsmt or .wiremap.json), a draw.io floor plan
+(.drawio), or a DXF/SVG drawing when the optional importers are
+installed. Without FILE the one project found next to the program (or
+in its data/ folder) opens, otherwise the start screen.
+
+Options:
+  -h, --help     show this help and exit
+  --version      show the version and exit
+"""
+
+
+def _cli_info(argv: list[str]) -> str | None:
+    """What to print (and then exit) for --version / --help, or None to
+    start the app. The windowed Windows exe has no console, so this is
+    for running from source and for the Linux builds."""
+    for a in argv[1:]:
+        if a == "--version":
+            return f"Camera Wire Tool {cwt.__version__}"
+        if a in ("-h", "--help"):
+            return _USAGE.rstrip("\n")
+    return None
+
+
 class _RootHost:
     """What render_cad_with_progress and _ProgressDialog need from the
     app (root, _px, _autosize_dialog), for a window with no project open
@@ -21190,6 +21231,10 @@ class StartScreen:
 
 
 def main() -> None:
+    info = _cli_info(sys.argv)
+    if info is not None:
+        print(info)
+        return
     _enable_windows_dpi_awareness()
     root = make_root()
 
@@ -21199,7 +21244,8 @@ def main() -> None:
     drawio_files = _discover_drawio_files()
 
     target = _path_from_argv(sys.argv)
-    if target is None:
+    missing = _missing_path_from_argv(sys.argv) if target is None else None
+    if target is None and missing is None:
         if len(bundles) == 1:
             # Prefer the .zsmt bundle, it's the canonical, revisioned project.
             target = bundles[0]
@@ -21230,6 +21276,13 @@ def main() -> None:
         _launch_app(root, *resolved)
     else:
         StartScreen(root, initial_dir=initial, nearby=nearby)
+        if missing is not None:
+            # A file was asked for but is not there: say so rather than
+            # showing the start screen (or another project) without a word.
+            root.after(150, lambda: messagebox.showerror(
+                "Couldn't open file",
+                f"{os.path.abspath(missing)}\n\nThis file does not exist. "
+                "Check the path, or pick a project below.", parent=root))
     root.mainloop()
 
 
