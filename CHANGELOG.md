@@ -51,6 +51,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and View → "Touchpad mode" makes plain scroll always pan. A classic mouse
   wheel still zooms.
 
+### CI
+
+- GitHub Actions workflow removed; GitLab CI is the only build.
+- The Linux test job now runs the GUI tests under Xvfb (fixed screen size,
+  colour depth and DejaVu font) instead of skipping them, and fails if no
+  display is available (`CAMERA_TOOL_GUI_TESTS=1`). It runs on Python 3.12,
+  the version the Windows and Linux builds use (it was on 3.15).
+- New `lint` job: `ruff check .` with a bug-catching rule set (E9, F, B,
+  PLE) configured in `pyproject.toml`. Fixed what it reported (an unused
+  import, a duplicated character in a `rstrip` set). The mypy config no
+  longer names modules that do not exist.
+- Release job: an existing release's download links are updated one by one
+  instead of all being deleted and re-added, so a failure part-way no
+  longer leaves a release without downloads. Each release now also carries
+  a `SHA256SUMS` file.
+- A BOM layout test no longer depends on which sans font the machine has.
+
 ## [1.2.4] - 2026-10-28
 
 Patch release: a usability pass on what a field installer sees on a
