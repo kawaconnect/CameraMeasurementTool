@@ -84,9 +84,12 @@ def test_export_dialog_fits_a_1366x768_laptop_at_150_percent(tk_root, tmp_path):
         pytest.skip("reportlab not installed")
     data = os.path.join(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))), "data")
-    for f in ("Floor1_Security_Measurements.drawio",
-              "Floor1_Security_Measurements.wiremap.json",
-              "Floor2_Security.drawio"):
+    files = ("Floor1_Security_Measurements.drawio",
+             "Floor1_Security_Measurements.wiremap.json",
+             "Floor2_Security.drawio")
+    if not all(os.path.isfile(os.path.join(data, f)) for f in files):
+        pytest.skip("sample project (data/) is not in this checkout")
+    for f in files:
         shutil.copyfile(os.path.join(data, f), tmp_path / f)
     tk_root.tk.call("tk", "scaling", 2.0)
     cwt._init_fonts(tk_root)

@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "camera-wire-tool"
 version = "1.2.4"
@@ -34,6 +38,12 @@ dev = [
 
 [project.scripts]
 camera-wire-tool = "camera_wire_tool:main"
+
+# The app is one module plus the cwt package; name them so setuptools does
+# not try to guess from the other top-level folders (tests, packaging, old).
+[tool.setuptools]
+py-modules = ["camera_wire_tool"]
+packages = ["cwt"]
 
 [tool.ruff]
 line-length = 110

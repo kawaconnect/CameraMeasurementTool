@@ -32,9 +32,13 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def two_floor_app(tk_root, tmp_path):
-    for f in ("Floor1_Security_Measurements.drawio",
-              "Floor1_Security_Measurements.wiremap.json",
-              "Floor2_Security.drawio"):
+    files = ("Floor1_Security_Measurements.drawio",
+             "Floor1_Security_Measurements.wiremap.json",
+             "Floor2_Security.drawio")
+    # The sample project is a real job's drawing and is not in the repo.
+    if not all(os.path.isfile(os.path.join(DATA, f)) for f in files):
+        pytest.skip("sample project (data/) is not in this checkout")
+    for f in files:
         shutil.copyfile(os.path.join(DATA, f), tmp_path / f)
     app = cwt.CameraWireTool(
         tk_root, str(tmp_path / "Floor1_Security_Measurements.drawio"))

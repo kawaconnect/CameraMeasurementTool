@@ -36,7 +36,6 @@ installer/installer_out/
 # Project-specific
 *.wiremap.json.bak
 *.wiremap.json.tmp
-~/.camera_wire_tool.log
 .coverage
 htmlcov/
 .pytest_cache/
@@ -45,9 +44,6 @@ htmlcov/
 
 # Recent files / settings (per-user state)
 .recent_files.json
-
-regexp:^$
-regexp:^$
 
 # Transient .zsmt bundle extractions (regenerated on open)
 *_work/
