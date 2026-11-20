@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Docs
+
+- README: example screenshot in `docs/images/` (example data only).
+
 ### Added
 
 - **File → Export readable layout PDF (per floor + key).** One page per

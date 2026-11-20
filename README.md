@@ -8,6 +8,8 @@ a project bill of materials.
 It started as a one-off for a single building addition and works on any
 draw.io plan.
 
+![Camera Wire Tool with an example office floor plan: cameras, card readers and the network rack wired, and the BOM tab with cable lengths and cost](docs/images/main-window.png)
+
 ## Features
 
 - Reads a `.drawio` floor plan: devices, legend and the embedded background
