@@ -65,7 +65,7 @@ variables:
 lint:
   extends: .linux
   stage: test
-  image: python:3.12
+  image: python:3.15
   variables:
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
   cache:
@@ -84,7 +84,7 @@ lint:
 test:
   extends: .linux
   stage: test
-  image: python:3.12
+  image: python:3.15
   variables:
     DEBIAN_FRONTEND: noninteractive
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
